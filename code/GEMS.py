@@ -19,6 +19,7 @@ from etcpy import etc
 import os
 from sklearn.metrics import mean_squared_error as MSE
 from sklearn.metrics import r2_score
+import cobra
 
 
 # ### Load data
@@ -221,3 +222,26 @@ def simulate_at_three_conditions_2(args):
     return {'rae':data_batch,'chemostat':data_chemo,'ran':data_batch_an}
 
 
+def addNGAMreaction(model):
+    reaction = cobra.Reaction('NGAM')
+    reaction.name = 'NGAM'
+    reaction.lower_bound = 1 # This is the default
+    reaction.upper_bound = 1  # This is the default
+
+    h_c = model.metabolites.h_c
+    atp_c = model.metabolites.atp_c
+    adp_c = model.metabolites.adp_c
+    h2o_c = model.metabolites.h2o_c
+    pi_c = model.metabolites.pi_c
+
+    reaction.add_metabolites({
+        atp_c: -1.0,
+        h2o_c: -1.0,
+        adp_c: 1.0,
+        h_c: 1.0,
+        pi_c: 1.0
+    })
+    model.add_reactions([reaction])
+    
+    print('Successfully added NGAM reaction')
+    return model

@@ -18,7 +18,6 @@ import pandas as pd
 import time
 
 
-# + jupyter={"source_hidden": true}
 def get_dH_dS_dCpu_from_TmT90(Tm,T90):
     '''
     # With knowing Tm and T90, get dHTH, dSTS and dCpu by solving
@@ -50,7 +49,6 @@ def get_dH_dS_dCpu_from_TmT90(Tm,T90):
     return dHTH,dSTS,dCpu
 
 
-# + jupyter={"source_hidden": true}
 def get_dH_dS_dCpu_from_TmLength(Tm,N):
     '''
     # In case of negative obtained from get_dH_dS_dCpu_from_TmT90(Tm,T90), or this is no T90 data available, 
@@ -76,8 +74,6 @@ def get_dH_dS_dCpu_from_TmLength(Tm,N):
     return dHTH,dSTS,dCpu
 
 
-# -
-
 def change_rxn_coeff(rxn,met,new_coeff):
     '''
     # This is based on the rxn.add_metabolites function. If there the metabolite is already in the reaction,
@@ -94,7 +90,6 @@ def change_rxn_coeff(rxn,met,new_coeff):
     except: rxn.add_metabolites({met:diff_coeff}, combine=False)
 
 
-# + jupyter={"source_hidden": true}
 def get_dGu(T,dHTH,dSTS,dCpu):
     '''
     # calculate the deltaG of unfolding process at temperature T
@@ -108,7 +103,6 @@ def get_dGu(T,dHTH,dSTS,dCpu):
     return dGu
 
 
-# + jupyter={"source_hidden": true}
 def get_fNT(T,dHTH,dSTS,dCpu):
     '''
     # Calculate the fraction of enzyme in native state
@@ -122,7 +116,6 @@ def get_fNT(T,dHTH,dSTS,dCpu):
     return f
 
 
-# + jupyter={"source_hidden": true}
 def map_fNT(model,T,df,Tadj=0):
     '''
     # apply the fraction of enzymes in native state to each protein.
@@ -161,8 +154,6 @@ def map_fNT(model,T,df,Tadj=0):
         change_rxn_coeff(rxn,met,new_coeff)
 
 
-# -
-
 def calculate_kcatT(T,dHTH,dSTS,dCpu,kcatTopt,dCpt,Topt):
     '''
     # Using Trainsition state theory to calculate kcat at temperature T.
@@ -178,7 +169,7 @@ def calculate_kcatT(T,dHTH,dSTS,dCpu,kcatTopt,dCpt,Topt):
     R = 8.314;
     TH = 373.5;
     TS = 385;
-    T0 = 30+273.15;
+    T0 = 0+273.15;
 
     # Use the equation from solvedHT.m and re-organized
     dGuTopt = dHTH +dCpu*(Topt-TH) -Topt*dSTS-Topt*dCpu*np.log(Topt/TS);
@@ -244,10 +235,12 @@ def map_kcatT(model,T,df):
 def getNGAMT(T):
     # T is in K, a single value
     def NGAM_function(T):
-        return 8.5*(1-0.62*np.exp(0.5/(8.617*10**-5)*(1/(T)-1/(273.15+25))))
+        return 8.5*(1-(0.62*np.exp((-0.5/(8.617*10**-5))*((1/(273.15+25)-1/(T))))))
         #return 0.740 + 5.893/(1+np.exp(31.920-(T-273.15))) + 6.12e-6*(T-273.15-16.72)**4
 
     NGAM_T = NGAM_function(T)
+    if NGAM_T < NGAM_function(273.15+25):
+        return NGAM_function(273.15+25)
 
     return NGAM_T
 
@@ -255,7 +248,7 @@ def getNGAMT(T):
 def set_NGAMT(model,T):
     # T is in K
     NGAM_T = getNGAMT(T)
-    rxn = model.reactions.NGAM
+    rxn = model.reactions.ATPM
     #ori_lb,ori_ub = rxn.lower_bound,rxn.upper_bound
     print('NGAM is:', NGAM_T)
     rxn.upper_bound = NGAM_T
@@ -278,8 +271,11 @@ def simulate_growth(model,Ts,sigma,df,Tadj=0):
     # Tadj, as descrbed in map_fNT
     #
     '''
+    #print('Random kcat: ', model.reactions.GLCDpp_EXP_2.get_coefficient('prot_P75804'))
+    #print('Random bounds: ', model.reactions.usage_prot_P75804.bounds)
     rs = list()
-    # print(sigma)
+    rg = list()
+    ro = list()
     for T in Ts:
         with model:
             # map temperature constraints
@@ -290,13 +286,28 @@ def simulate_growth(model,Ts,sigma,df,Tadj=0):
 
             try: 
                 r = model.optimize().objective_value
-                #print(model.summary().uptake_flux.loc['EX_glc__D_e'])
+                g = model.summary().uptake_flux.loc['EX_glc__D_e','flux']
+                o = model.summary().uptake_flux.loc['EX_o2_e','flux']
+                #print('Growth: ', model.optimize().objective_value)
+                #print('Random kcat: ', model.reactions.GLCDpp_EXP_2.get_coefficient('prot_P75804'))
+                #print('Random bounds: ', model.reactions.usage_prot_P75804.bounds)
+                #print('Oxygen Uptake Flux is:', model.summary().uptake_flux.loc['EX_o2_e','flux'])
+                #print('Hydrogen Uptake Flux is: ', model.summary().uptake_flux.loc['EX_h2_e','flux'])
             except:
                 print('Failed to solve the problem')
                 r = 0
-            print(T-273.15,r)
+                g = 0
+                o = 0
+            print('Growth at ', T-273.15, 'is: ',r)
+            
+            #print('Glucose Uptake Flux is:', model.summary().uptake_flux.loc['EX_glc__D_e','flux'])
+            #print('Oxygen Uptake Flux is:', model.summary().uptake_flux.loc['EX_o2_e','flux'])
+            #print('Hydrogen Uptake Flux is: ', model.summary().uptake_flux.loc['EX_h2_e','flux'])
+            #print(rs)
             rs.append(r)
-    return rs
+            rg.append(g)
+            ro.append(o)
+    return rs, rg, ro
 
 
 def sample_data_uncertainty(params,columns=None):
@@ -460,5 +471,7 @@ def simulate_chomostat(model,dilu,params,Ts,sigma,growth_id,glc_up_id,prot_pool_
                     #solutions.append(None)
                     break # because model has been impaired. Further simulation won't give right output.
     return solutions
+
+
 
 
