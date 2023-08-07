@@ -8,3 +8,7 @@ code/.ipynb_checkpoints/*
 /.ipynb_checkpoints
 /__pycache__
 code/__pycache__
+results/*
+code/.Rhistory
+code/etcpy/__pycache__
+code/etcpy/.ipynb_checkpoints
