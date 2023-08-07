@@ -1,0 +1,10 @@
+# This is a gitignore file for this directory
+
+code/.ipynb_checkpoints/*
+*~
+*.tmp
+*.log
+/.idea
+/.ipynb_checkpoints
+/__pycache__
+code/__pycache__
