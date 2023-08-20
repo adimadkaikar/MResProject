@@ -16,6 +16,7 @@ import numpy as np
 from scipy.optimize import fsolve
 import pandas as pd
 import time
+from etcpy import tempDep
 
 
 def get_dH_dS_dCpu_from_TmT90(Tm,T90):
@@ -276,6 +277,12 @@ def simulate_growth(model,Ts,sigma,df,Tadj=0):
     rs = list()
     rg = list()
     ro = list()
+    co = list()
+    ao = list()
+    
+    # NGAM wiggle definiton:
+    #wig = np.random.uniform(high=2)
+    
     for T in Ts:
         with model:
             # map temperature constraints
@@ -288,6 +295,8 @@ def simulate_growth(model,Ts,sigma,df,Tadj=0):
                 r = model.optimize().objective_value
                 g = model.summary().uptake_flux.loc['EX_glc__D_e','flux']
                 o = model.summary().uptake_flux.loc['EX_o2_e','flux']
+                c = model.summary().secretion_flux.loc['EX_co2_e','flux']
+                a = model.summary().secretion_flux.loc['EX_ac_e','flux']
                 #print('Growth: ', model.optimize().objective_value)
                 #print('Random kcat: ', model.reactions.GLCDpp_EXP_2.get_coefficient('prot_P75804'))
                 #print('Random bounds: ', model.reactions.usage_prot_P75804.bounds)
@@ -298,6 +307,8 @@ def simulate_growth(model,Ts,sigma,df,Tadj=0):
                 r = 0
                 g = 0
                 o = 0
+                c = 0
+                a = 0
             print('Growth at ', T-273.15, 'is: ',r)
             
             #print('Glucose Uptake Flux is:', model.summary().uptake_flux.loc['EX_glc__D_e','flux'])
@@ -307,7 +318,9 @@ def simulate_growth(model,Ts,sigma,df,Tadj=0):
             rs.append(r)
             rg.append(g)
             ro.append(o)
-    return rs, rg, ro
+            co.append(c)
+            ao.append(a)
+    return rs, rg, ro, co, ao
 
 
 def sample_data_uncertainty(params,columns=None):
