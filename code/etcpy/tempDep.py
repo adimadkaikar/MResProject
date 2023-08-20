@@ -1,3 +1,18 @@
+# ---
+# jupyter:
+#   jupytext:
+#     text_representation:
+#       extension: .py
+#       format_name: light
+#       format_version: '1.5'
+#       jupytext_version: 1.14.5
+#   kernelspec:
+#     display_name: Python 3 (ipykernel)
+#     language: python
+#     name: python3
+# ---
+
+
 import numpy as np
 from scipy.optimize import fsolve
 import pandas as pd
@@ -200,13 +215,12 @@ def sample_data_uncertainty_with_constraint_random_topt(inpt,columns=None):
         if col == 'Topt':
             for ind in sampled_params.index:
                 if params.loc[ind, 'topt_source']=='BullShit':
-                    M = (params.loc[ind, 'Tm']-params.loc[ind,col])*0.15 + params.loc[ind,col]
-                    SD = abs((params.loc[ind, 'Tm']-params.loc[ind,col])*0.05)
+                    M = params.loc[ind,col]
+                    SD = 1
                     sampled_params.loc[ind, 'Topt'] = np.random.normal(M,SD)
                 else: 
-                    M = (params.loc[ind, 'Tm']-params.loc[ind,col])*0.09 + params.loc[ind,col]
-                    SD = abs((params.loc[ind, 'Tm']-params.loc[ind,col])*0.02)
-                    #print(M, SD)
+                    M = params.loc[ind,col]
+                    SD = 0.5
                     sampled_params.loc[ind, 'Topt'] = np.random.normal(M,SD)
             
         if col == 'dCpt':
@@ -215,7 +229,34 @@ def sample_data_uncertainty_with_constraint_random_topt(inpt,columns=None):
         if col == 'Tm':
             for ind in sampled_params.index:
                 if params.loc[ind, 'TmTag']=='Mean':
-                    sampled_params.loc[ind, 'Tm'] = np.random.normal(params.loc[ind,col],1)
+                    sampled_params.loc[ind, 'Tm'] = np.random.normal(params.loc[ind,col],4)
                 else:
-                    sampled_params.loc[ind, 'Tm'] = np.random.normal(params.loc[ind,col],0.5)
+                    sampled_params.loc[ind, 'Tm'] = np.random.normal(params.loc[ind,col],3)
     return sampled_params
+
+def getNGAMT(T, wig):
+    # T is in K, a single value
+    def NGAM_function(T):
+        return 8.5*(1-(0.62*np.exp((-0.5/(8.617*10**-5))*((1/(273.15+25)-1/(T))))))
+        #return 0.740 + 5.893/(1+np.exp(31.920-(T-273.15))) + 6.12e-6*(T-273.15-16.72)**4
+
+    NGAM_T = NGAM_function(T)
+    if NGAM_T < NGAM_function(273.15+25):
+        return NGAM_function(273.15+25)*wig
+
+    return NGAM_T*wig
+
+
+def set_NGAMT(model,T, wig):
+    # T is in K
+    NGAM_T = getNGAMT(T, wig)
+    rxn = model.reactions.ATPM
+    #ori_lb,ori_ub = rxn.lower_bound,rxn.upper_bound
+    print('NGAM is:', NGAM_T)
+    try:
+        rxn.upper_bound = NGAM_T
+        rxn.lower_bound = NGAM_T
+    except:
+        rxn.upper_bound=1000
+        rxn.lower_bound=NGAM_T
+        rxn.upper_bound=NGAM_T
