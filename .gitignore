@@ -12,3 +12,4 @@ results/*
 code/.Rhistory
 code/etcpy/__pycache__
 code/etcpy/.ipynb_checkpoints
+data/.ipynb_checkpoints/*
