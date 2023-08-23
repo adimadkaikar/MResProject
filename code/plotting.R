@@ -1,3 +1,6 @@
+# Clearing the workspace
+rm(list = ls())
+
 # Loading the libraries
 library(tidyverse)
 
@@ -40,8 +43,8 @@ toPlot <- toPlot %>% mutate(exp=rate)
 svg('../graphs/goodfit.svg',  width = 8, height = 6)
 
 p <- ggplot(toPlot, aes(x=temp))
-p <- p +  geom_line(aes(y=growth, color='growth'), size =1)
-p <- p + geom_point(aes(y=exp, color='exp'), size=2.5) 
+p <- p +  geom_line(aes(y=log(growth), color='growth'), size =1)
+p <- p + geom_point(aes(y=log(exp), color='exp'), size=2.5) 
 
 p <- p + theme_minimal()
 p <- p + xlab(xlabel) + ylab(ylabel)
@@ -107,21 +110,21 @@ p
 dev.off()
 
 ############### Next Acutal Plot ################
-bestFit <- modelResults %>% filter(R2 == max(R2))
-worstFit <- modelResults %>% filter(R2 == min(R2))
-growth <- ExpGrowth %>% filter(ID==0)
-rate <- growth$r
+#growth <- ExpGrowth %>% filter(ID==0)
+#rate <- growth$r
 
-toPlotShade <- bestFit %>% select(temp, growth)
-toPlotShade <- toPlotShade %>% mutate(badGrowth= worstFit$growth)
-toPlotShade <- toPlotShade %>% mutate(exp=rate)
+toPlotShade <- modelResults %>% group_by(temp) %>% 
+    summarise(minGrowth=min(growth), maxGrowth=max(growth), 
+              meanGrowth=mean(growth), .groups = 'drop')
+
 
 svg('../graphs/fitRange.svg', width = 8, height = 6)
+
 q <- ggplot(toPlotShade, aes(x=temp))
-q <- q +  geom_line(aes(y=growth, color='growth'), size =1)
-q <- q +  geom_line(aes(y=badGrowth, color='badGrowth'), size =1)
-q <- q + geom_ribbon(aes(x = temp,ymin = growth,ymax = badGrowth), 
-                     fill = "gray",alpha = 0.4)
+q <- q +  geom_line(aes(y=meanGrowth, color='meanGrowth'), size =1)
+#q <- q +  geom_line(aes(y=badGrowth, color='badGrowth'), size =1)
+q <- q + geom_ribbon(aes(x = temp,ymin = minGrowth,ymax = maxGrowth), 
+                     fill = "#0072B2",alpha = 0.1)
 q <- q + theme_minimal()
 q <- q + xlab(xlabel) + ylab(ylabel)
 q <- q + theme(axis.text=element_text(size=12),
@@ -135,13 +138,14 @@ q <- q + theme(panel.grid.major = element_blank(),
                panel.grid.minor = element_blank()) 
 q <- q + theme(legend.title = element_text(colour = "black", size = 12.5),
                legend.text = element_text(colour = "black", size = 15),)
-q <- q + scale_color_manual(values=c("#D55E00", "#0072B2"),
+q <- q + scale_color_manual(values=c("#D55E00"),
                             name  =NULL,
-                            breaks=c("badGrowth", "growth"),
-                            labels=c("Worst Prediction", "Best Prediction"))
+                            breaks=c("meanGrowth"),
+                            labels=c("Mean Growth"))
 q <- q + theme(legend.justification=c(0,1), legend.position=c(0,1))
 
 q
+
 dev.off()
 
 ############ Histograms ##################
@@ -181,8 +185,8 @@ t
 dev.off()
 
 ############### Low Temp plot #################
-bestFit <- bestNow %>% filter(iter==1)
-growth <- ExpGrowth %>% filter(ID==1)
+bestFit <- bestNow %>% filter(iter==5)
+growth <- ExpGrowth %>% filter(ID==5)
 rate <- growth$r
 toPlot <- bestFit
 toPlot <- toPlot %>% mutate(exp=rate)
@@ -217,6 +221,42 @@ p + annotate("text", x= 12, y=1.3,label = 'R^2==0.9299357', parse=T, size=4.5)+ 
 
 dev.off()
 
+############### Wonky Media Plot #################
+bestFit <- bestNow %>% filter(iter==12)
+growth <- ExpGrowth %>% filter(ID==12)
+rate <- growth$r
+toPlot <- bestFit
+toPlot <- toPlot %>% mutate(exp=rate)
+
+
+svg('../graphs/wonkyMedia.svg',  width = 8, height = 6)
+
+p <- ggplot(toPlot, aes(x=temp))
+p <- p +  geom_line(aes(y=log(growth), color='growth'), size =1)
+p <- p + geom_point(aes(y=log(exp), color='exp'), size=2.5) 
+
+p <- p + theme_minimal()
+p <- p + xlab(xlabel) + ylab(ylabel)
+p <- p + theme(axis.text=element_text(size=12),
+               axis.title=element_text(size=18), 
+               axis.line = element_line(colour = "black"))
+p <- p + theme(axis.text.x = element_text(color="black", 
+                                          size=14),
+               axis.text.y = element_text( color="black", 
+                                           size=14))
+p <- p + theme(panel.grid.major = element_blank(), 
+               panel.grid.minor = element_blank()) 
+p <- p + theme(legend.title = element_text(colour = "black", size = 12.5),
+               legend.text = element_text(colour = "black", size = 15),)
+p <- p + scale_color_manual(values=c("#000000", "#0072B2"),
+                            name  =NULL,
+                            breaks=c("exp", "growth"),
+                            labels=c("Empirical Data", "Model Prediction"))
+p <- p + theme(legend.justification=c(0,1), legend.position=c(0,1))
+
+p + annotate("text", x= 12, y=1.3,label = 'R^2==0.4532037', parse=T, size=4.5)+ annotate("text", x= 12.5, y=1.2,label = 'MSE==0.3573476', parse=T, size=4.5)
+
+dev.off()
 
 ############# Original model Plots #########
 punchingBagSet <- originalModel %>% filter(iter==0)
