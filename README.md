@@ -51,7 +51,7 @@ This directory contains the data required for simulations:
 * model_enzyme_params_new_tageed.csv -> Initial parameter estimates
 * model_enzyme_params_new.csv -> Initial parameter estimates
 * model_enzyme_params.csv -> Initial parameter estimates
-
+* media.csv -> File containing media information
 ## Models
 
 This directory contains the ecGEM used for incorporating temperature dependence of enzyme function
